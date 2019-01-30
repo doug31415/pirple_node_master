@@ -17,6 +17,7 @@ const StringDecoder = require('string_decoder').StringDecoder;
 // application deps
 const logger = require('./lib/logger');
 const router = require('./lib/router');
+const handlers = require('./lib/handlers');
 
 // variables
 const HTTP_PORT = config.httpPort;
@@ -80,8 +81,10 @@ const unifiedServer = (req, res) => {
         // cap buffer
         payload += decoder.end();
 
+        console.log('router', router)
+
         // choose handler
-        const handler = router.handlers[trimmedPath] || router.handlers.notFound;
+        const routeHandler = router[trimmedPath] || handlers.notFound;
 
         // create data obj
         const data = {
@@ -93,7 +96,7 @@ const unifiedServer = (req, res) => {
         };
 
         // route request
-        handler(data, (status, payload) => {
+        routeHandler(data, (status, payload) => {
             const statusCode = (typeof status === 'number') ? status : 404;
             const responsePayload = (typeof payload === 'object') ? payload : {};
             const retVal = JSON.stringify(responsePayload);
