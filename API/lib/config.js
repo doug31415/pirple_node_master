@@ -13,6 +13,7 @@
 const staging = {
     httpPort: 3000,
     httpsPort: 3001,
+    hashSecret: 'theSecretForHashing',
     name: 'staging'
 }
 
@@ -20,6 +21,7 @@ const staging = {
 const production = {
     httpPort: 5000,
     httpsPort: 5001,
+    hashSecret: 'theSecretForHashing2',
     name: 'production'
 }
 

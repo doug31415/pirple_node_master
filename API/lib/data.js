@@ -10,6 +10,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const helpers = require('./helpers');
 
 
 // container
@@ -30,7 +31,7 @@ lib.saveAndClose = function (fileDescriptor, stringData, callback) {
             // close the file
             fs.close(fileDescriptor, err => {
                 if (!err) {
-                    callback('Success')
+                    callback(false)
                 } else {
                     callback('Error closing file', err)
 
@@ -60,7 +61,12 @@ lib.create = function (dir, fileName, data, callback) {
 // read data from a file
 lib.read = function (dir, fileName, callback) {
     fs.readFile(lib.getFilePath(dir, fileName), 'utf-8', (err, data) => {
-        callback(err, data)
+        if (!err && data) {
+            const parsed = helpers.parseJsonStr(data)
+            callback(false, parsed)
+        } else {
+            callback(err, data)
+        }
     })
 }
 
@@ -92,7 +98,7 @@ lib.update = function (dir, fileName, data, callback) {
 lib.delete = function (dir, fileName, callback) {
     fs.unlink(lib.getFilePath(dir, fileName), (err) => {
         if (!err) {
-            callback('Success')
+            callback(false)
         } else {
             callback(err)
         }

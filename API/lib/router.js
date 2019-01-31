@@ -12,7 +12,7 @@ const handlers = require('./handlers');
 // request router
 const router = {
     'ping': handlers.ping,
-    'hello': handlers.hello
+    'users': handlers.users
 }
 
 // ---------------------------------------

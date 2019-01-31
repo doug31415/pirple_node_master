@@ -7,7 +7,7 @@
  * --------------------------------- */
 
 // node deps
-const config = require('./config');
+const config = require('./lib/config');
 const http = require('http');
 const https = require('https');
 const fs = require('fs');
@@ -18,6 +18,7 @@ const StringDecoder = require('string_decoder').StringDecoder;
 const logger = require('./lib/logger');
 const router = require('./lib/router');
 const handlers = require('./lib/handlers');
+const helpers = require('./lib/helpers');
 
 // variables
 const HTTP_PORT = config.httpPort;
@@ -81,8 +82,6 @@ const unifiedServer = (req, res) => {
         // cap buffer
         payload += decoder.end();
 
-        console.log('router', router)
-
         // choose handler
         const routeHandler = router[trimmedPath] || handlers.notFound;
 
@@ -92,7 +91,7 @@ const unifiedServer = (req, res) => {
             queries: queryStringObj,
             method,
             headers,
-            payload
+            payload: helpers.parseJsonStr(payload)
         };
 
         // route request

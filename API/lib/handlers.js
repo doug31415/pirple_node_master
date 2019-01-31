@@ -4,32 +4,37 @@
  * All rights reserved.
  * 
  * Created by DGoodman on Tue Jan 29 2019
+ * 
+ * Request handlers
  * --------------------------------- */
 
+const _data = require('./data');
+const helpers = require('./helpers');
+const users = require('./routes/users');
+
+const METHODS = {
+    delete: 'DELETE',
+    get: 'GET',
+    post: 'POST',
+    put: 'PUT',
+}
+
+const handlers = {}
+
 // ---------------------------------------
-// simple ping
-const ping = (data, callback) => {
+// application routes
+handlers.ping = (data, callback) => {
     callback(200)
 }
 
-// hello world homework
-const hello = (data, callback) => {
-    callback(200, {
-        response: 'hello world'
-    })
-}
-
 // 404 handler
-const notFound = (data, callback) => {
+handlers.notFound = (data, callback) => {
     callback(404)
 }
 
-// all handlers
-const handlers = {
-    ping,
-    hello,
-    notFound,
-}
+// ---------------------------------------
+// user routes
+handlers.users = users.userRoutes;
 
 // ---------------------------------------
 module.exports = handlers
