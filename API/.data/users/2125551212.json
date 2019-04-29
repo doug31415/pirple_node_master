@@ -1,7 +1,1 @@
-{
-    "firstname": "Mr",
-    "lastname": "Mister",
-    "phone": "2125551212",
-    "hashedPassword": "463a7b64675a84b44ce0636ba6ed05969a7160b7f0cfb04dfe43b016e9ff3c4f",
-    "tosAgreement": true
-}
+{"firstname":"Mr","lastname":"Mister","phone":"2125551212","hashedPassword":"ac1eba5c4cd7272844ab7db91ab703cb59fb4bf64e985efb228fea25eff27908","tosAgreement":true,"checks":["vqKI770Zs4vI1by2PX3E","QvfQVqHmVuMbCUYcG8vB","8iZiGYy5RgmfG0DlsPNK"]}

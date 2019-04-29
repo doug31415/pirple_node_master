@@ -12,6 +12,8 @@ const handlers = require('./handlers');
 // request router
 const router = {
     'ping': handlers.ping,
+    'checks': handlers.checks,
+    'tokens': handlers.tokens,
     'users': handlers.users
 }
 

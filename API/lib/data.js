@@ -10,18 +10,22 @@
 
 const fs = require('fs');
 const path = require('path');
-const helpers = require('./helpers');
+
+const util = require('util');
+const debug = util.debuglog('api_data');
+
+const _appHelpers = require('./helpers/app.helpers');
 
 
 // container
 const lib = {};
 
 // base directory
-lib.baseDataDir = path.join(__dirname, '/../.data/');
+lib.baseDir = path.join(__dirname, '/../.data/');
 
 // helper to get normalized file path
 lib.getFilePath = function (dir, fileName) {
-    return lib.baseDataDir + dir + '/' + fileName + '.json'
+    return lib.baseDir + dir + '/' + fileName + '.json'
 }
 
 // helper to save and close data
@@ -62,7 +66,7 @@ lib.create = function (dir, fileName, data, callback) {
 lib.read = function (dir, fileName, callback) {
     fs.readFile(lib.getFilePath(dir, fileName), 'utf-8', (err, data) => {
         if (!err && data) {
-            const parsed = helpers.parseJsonStr(data)
+            const parsed = _appHelpers.parseJsonStr(data)
             callback(false, parsed)
         } else {
             callback(err, data)
@@ -78,7 +82,7 @@ lib.update = function (dir, fileName, data, callback) {
             const stringData = JSON.stringify(data);
 
             // truncate file
-            fs.truncate(fileDescriptor, err => {
+            fs.ftruncate(fileDescriptor, err => {
                 if (!err) {
                     // write to file then close
                     lib.saveAndClose(fileDescriptor, stringData, callback);
@@ -89,7 +93,7 @@ lib.update = function (dir, fileName, data, callback) {
 
 
         } else {
-            callback('Cannot update file. Does it exist?', err)
+            callback(`Cannot update ${dir}/${fileName} with ${data}. Does it exist?`, err)
         }
     })
 }
@@ -101,6 +105,22 @@ lib.delete = function (dir, fileName, callback) {
             callback(false)
         } else {
             callback(err)
+        }
+    })
+}
+
+// list all the files in a directory
+lib.list = (dir, callback) => {
+    fs.readdir(`${lib.baseDir}${dir}/`, (err, data) => {
+        debug('list', data);
+        if (!err && _appHelpers.validateArray(data, 1)) {
+            const trimmedFileNames = [];
+            data.forEach(datum => {
+                trimmedFileNames.push(datum.replace('.json', ''))
+            });
+            callback(false, trimmedFileNames)
+        } else {
+            callback(err, data)
         }
     })
 }

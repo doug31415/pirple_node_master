@@ -5,47 +5,63 @@
  * 
  * Created by DGoodman on Thu Jan 31 2019
  * 
- * Routes for userRoutes
+ * Routes for userService
  * --------------------------------- */
+const util = require('util');
+const debug = util.debuglog('api_users');
 
-const helpers = require('../helpers');
+const _appHelpers = require('../helpers/app.helpers');
 const _data = require('../data');
+const verifyToken = require('./tokens').verify;
 
-const METHODS = helpers.METHODS;
+const METHODS = _appHelpers.METHODS;
 
 // container
-const userRoutes = {};
+const userService = {};
 
 // ---------------------------------------
 // user methods - public gateway method
-userRoutes.userRoutes = (data, callback) => {
-    const allowedMethods = [METHODS.delete, METHODS.get, METHODS.post, METHODS.put];
-    if (allowedMethods.indexOf(data.method.toUpperCase()) !== -1) {
-        userRoutes._userRoutes[data.method.toLowerCase()](data, callback)
+userService.routes = (data, callback) => {
+    debug('user method', data.method)
+    if (_appHelpers.allMethods.indexOf(data.method.toLowerCase()) !== -1) {
+        userService._routes[data.method.toLowerCase()](data, callback)
     } else {
-        callback(405)
+        callback(405, `the method ${data.method} is not allowed`)
     }
 }
 
 // private user methods
-userRoutes._userRoutes = {}
+userService._routes = {}
 
 /**
  * @param data.phone string
- * @todo only allow for authenticated userRoutes
  */
-userRoutes._userRoutes.get = function (data, callback) {
-    console.log('users.get', data.queries.phone)
-    const phone = helpers.validateString(data.queries.phone, 10, 10);
+userService._routes.get = function (data, callback) {
+    debug('users.get', data.queries.phone)
+    const phone = _appHelpers.validateString(data.queries.phone, 10, 10);
 
     if (phone) {
-        _data.read('users', phone, (err, data) => {
-            if (!err) {
-                // removed hashed pw from object
-                delete data.hashedPassword;
-                callback(200, data)
+        // get token from headers
+        const token = _appHelpers.validateTokenFromHeader(data.headers.token);
+        debug('...token', token)
+
+        // verify that the token is valid for the phone
+        verifyToken(token, phone, tokenIsValid => {
+            debug('...tokenIsValid', tokenIsValid)
+            if (tokenIsValid) {
+                _data.read('users', phone, (err, data) => {
+                    if (!err) {
+                        // removed hashed pw from object
+                        delete data.hashedPassword;
+                        callback(200, data)
+                    } else {
+                        callback(404)
+                    }
+                })
             } else {
-                callback(404)
+                callback(403, {
+                    error: 'Missing or invalid token'
+                })
             }
         })
     } else {
@@ -61,22 +77,26 @@ userRoutes._userRoutes.get = function (data, callback) {
  * @param data.phone string
  * @param data.password string
  * @param data.tosAgreement bool
- * @TODO only allow for authenticated userRoutes
+ * @TODO only allow for authenticated userService?
  */
-userRoutes._userRoutes.post = function (data, callback) {
-    const firstname = helpers.validateString(data.payload.firstname);
-    const lastname = helpers.validateString(data.payload.lastname);
-    const phone = helpers.validateString(data.payload.phone, 10, 10);
-    const password = helpers.validateString(data.payload.password, 0);
-    const tosAgreement = (typeof data.payload.tosAgreement === 'boolean' && !!data.payload.tosAgreement) ? true : false;
+userService._routes.post = function (data, callback) {
+    requiredFieldsAreValid = getRequiredFieldsAreValid(data.payload);
+    debug('...data', data.payload);
+    debug('...requiredFieldsAreValid', requiredFieldsAreValid);
 
-    if (firstname && lastname && phone && password && tosAgreement) {
-        // ensure the user doesnt exist
+    if (requiredFieldsAreValid) {
+
+        const firstname = data.payload.firstname;
+        const lastname = data.payload.lastname;
+        const phone = data.payload.phone;
+        const password = data.payload.password;
+        const tosAgreement = data.payload.tosAgreement;
+
         _data.read('users', phone, (err, data) => {
             if (err) {
                 // user doesnt exist
                 // hash the password
-                const hashedPassword = helpers.hash(password);
+                const hashedPassword = _appHelpers.hash(password);
 
                 if (hashedPassword) {
                     const userData = {
@@ -99,10 +119,9 @@ userRoutes._userRoutes.post = function (data, callback) {
                         }
                     })
                 }
-
             } else {
-                callback(400, {
-                    error: 'User exists'
+                callback(403, {
+                    error: 'Password is not valid'
                 })
             }
         })
@@ -115,47 +134,61 @@ userRoutes._userRoutes.post = function (data, callback) {
 
 /**
  * @param data.phone string
- * @TODO only allow for authenticated userRoutes
- * @TODO only allow userRoutes to update their own data
  */
-userRoutes._userRoutes.put = function (data, callback) {
-    console.log('users.put data:', data)
-    const firstname = helpers.validateString(data.payload.firstname);
-    const lastname = helpers.validateString(data.payload.lastname);
-    const phone = helpers.validateString(data.payload.phone, 10, 10);
-    const password = helpers.validateString(data.payload.password, 0);
+userService._routes.put = function (data, callback) {
+    debug('users.put data:', data)
+    const firstname = _appHelpers.validateString(data.payload.firstname);
+    const lastname = _appHelpers.validateString(data.payload.lastname);
+    const phone = _appHelpers.validateString(data.payload.phone, 10, 10);
+    const password = _appHelpers.validateString(data.payload.password, 0);
+
+    debug('...firstname', firstname);
+    debug('...lastname', lastname);
+    debug('...phone', phone);
+    debug('...password', password);
 
     if (phone && (firstname || lastname || password)) {
-        // ensure the user does exist
-        _data.read('users', phone, (err, data) => {
-            if (!err && data) {
-                // user does exist
 
-                if (firstname) {
-                    data.firstname = firstname
-                }
-                if (lastname) {
-                    data.lastname = lastname
-                }
-                if (password) {
-                    data.hashedPassword = helpers.hash(password);
-                }
+        // get token from headers
+        const token = _appHelpers.validateTokenFromHeader(data.headers.token);
 
-                // store user
-                _data.update('users', phone, data, err => {
-                    if (!err) {
-                        callback(200)
+        // verify that the token is valid for the phone
+        verifyToken(token, phone, tokenIsValid => {
+            if (tokenIsValid) {
+                // ensure the user does exist
+                _data.read('users', phone, (err, data) => {
+                    if (!err && data) {
+                        // user does exist
+
+                        if (firstname) {
+                            data.firstname = firstname
+                        }
+                        if (lastname) {
+                            data.lastname = lastname
+                        }
+                        if (password) {
+                            data.hashedPassword = _appHelpers.hash(password);
+                        }
+
+                        // store user
+                        _data.update('users', phone, data, err => {
+                            if (!err) {
+                                callback(200)
+                            } else {
+                                callback(500, {
+                                    error: 'User not updated',
+                                    mssg: err
+                                })
+                            }
+                        })
                     } else {
-                        callback(500, {
-                            error: 'User not updated',
-                            mssg: err
+                        callback(400, {
+                            error: 'User doesnt exist'
                         })
                     }
                 })
             } else {
-                callback(400, {
-                    error: 'User doesnt exist'
-                })
+                callback(404)
             }
         })
     } else {
@@ -167,38 +200,94 @@ userRoutes._userRoutes.put = function (data, callback) {
 
 /**
  * @param data.queries.phone string
- * @TODO only allow for authenticated userRoutes
- * @TODO only allow userRoutes to update their own data
  */
-userRoutes._userRoutes.delete = function (data, callback) {
-    console.log('users.delete', data.queries);
+userService._routes.delete = function (data, callback) {
+    debug('users.delete', data.queries);
 
-    const phone = helpers.validateString(data.queries.phone, 10, 10);
+    const phone = _appHelpers.validateString(data.queries.phone, 10, 10);
+    debug('...phone', phone);
 
     if (phone) {
-        _data.read('users', phone, (err, data) => {
-            if (!err && data) {
-                _data.delete('users', phone, (err, data) => {
-                    if (!err) {
-                        callback(200)
+        // get token from headers
+        const token = _appHelpers.validateTokenFromHeader(data.headers.token);
+        debug('...token', token);
+
+        // verify that the token is valid for the phone
+        verifyToken(token, phone, tokenIsValid => {
+            debug('...tokenIsValid', tokenIsValid);
+            if (tokenIsValid) {
+                // ensure the user does exist
+                _data.read('users', phone, (err, userData) => {
+                    if (!err && userData) {
+                        _data.delete('users', phone, (err, data) => {
+                            if (!err) {
+                                let checks = _appHelpers.validateArray(userData.checks);
+                                debug('...checks', checks)
+                                if (checks.length) {
+                                    let deleteCount = 0;
+                                    let deletionErrors = false;
+                                    checks.forEach(check => {
+                                        _data.delete('checks', check, err => {
+                                            debug('...delete checks', err)
+                                            if (err) {
+                                                deletionErrors = true;
+                                            }
+                                            deleteCount++
+                                            debug('...deleteCount', deleteCount)
+                                            debug('...deletionErrors', deletionErrors)
+                                            if (checks.length === deleteCount) {
+                                                if (!deletionErrors) {
+                                                    callback(200, 'Checks deleted')
+                                                } else {
+                                                    callback(500, {
+                                                        error: 'Checks could not be deleted - all checks may not be deleted'
+                                                    })
+                                                }
+                                            }
+                                        })
+                                    })
+                                } else {
+                                    callback(200, 'Delete success')
+                                }
+                            } else {
+                                callback(500, {
+                                    error: 'Could not delete User'
+                                })
+                            }
+                        })
                     } else {
-                        callback(500, {
-                            error: 'Could not delete User'
+                        callback(400, {
+                            error: 'User not found'
                         })
                     }
                 })
             } else {
-                callback(400, {
-                    error: 'User not found'
+                callback(404, {
+                    error: 'Missing or invalid token'
                 })
             }
         })
-
     } else {
-        callback(400, {
+        callback(403, {
             error: 'Bad request'
         })
     }
 }
 
-module.exports = userRoutes;
+const getRequiredFieldsAreValid = (payload) => {
+    const firstname = _appHelpers.validateString(payload.firstname);
+    const lastname = _appHelpers.validateString(payload.lastname);
+    const phone = _appHelpers.validateString(payload.phone, 10, 10);
+    const password = _appHelpers.validateString(payload.password, 0);
+    const tosAgreement = (typeof payload.tosAgreement === 'boolean' && !!payload.tosAgreement) ? true : false;
+
+    debug('...firstname', firstname);
+    debug('...lastname', lastname);
+    debug('...phone', phone);
+    debug('...password', password);
+    debug('...tosAgreement', tosAgreement);
+
+    return (firstname && lastname && phone && password && tosAgreement)
+}
+
+module.exports = userService;

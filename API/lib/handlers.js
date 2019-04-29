@@ -8,16 +8,10 @@
  * Request handlers
  * --------------------------------- */
 
-const _data = require('./data');
-const helpers = require('./helpers');
-const users = require('./routes/users');
 
-const METHODS = {
-    delete: 'DELETE',
-    get: 'GET',
-    post: 'POST',
-    put: 'PUT',
-}
+const userRoutes = require('./routes/users');
+const tokenRoutes = require('./routes/tokens');
+const checksRoutes = require('./routes/checks');
 
 const handlers = {}
 
@@ -34,7 +28,15 @@ handlers.notFound = (data, callback) => {
 
 // ---------------------------------------
 // user routes
-handlers.users = users.userRoutes;
+handlers.users = userRoutes.routes;
+
+// ---------------------------------------
+// token routes
+handlers.tokens = tokenRoutes.routes;
+
+// ---------------------------------------
+// checks routes
+handlers.checks = checksRoutes.routes;
 
 // ---------------------------------------
 module.exports = handlers
